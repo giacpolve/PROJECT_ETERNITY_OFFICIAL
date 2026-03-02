@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Heart, Star, History, Trash2 } from "lucide-react";
+import { Star, History, Trash2, ShieldCheck } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 
-// Questa parte dice a Vercel esattamente cosa aspettarsi
+// --- DATI DALLA TUA FOTO ---
+const SUPABASE_URL = "https://jfgqzdjmwunlivjulony.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_5KedbyiB-MIY_2my_EzL3A_pWemXtTo";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 interface Messaggio {
-  id: number;
+  id?: number;
   to: string;
   text: string;
   date: string;
@@ -29,42 +35,45 @@ export default function App() {
     type: "Moglie",
   });
   const [thought, setThought] = useState("");
-
-  // Specifichiamo il tipo <Messaggio[]> per evitare l'errore TS2345
   const [archive, setArchive] = useState<Messaggio[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedData = localStorage.getItem("project_eternity_data");
-    if (savedData) {
-      try {
-        setArchive(JSON.parse(savedData));
-      } catch (e) {
-        setArchive([]);
-      }
-    }
+    fetchMessages();
   }, []);
 
-  const handleSave = () => {
-    const newMessage: Messaggio = {
-      id: Date.now(),
+  async function fetchMessages() {
+    try {
+      const { data, error } = await supabase
+        .from("messaggi")
+        .select("*")
+        .order("id", { ascending: false });
+      if (data) setArchive(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleSave = async () => {
+    if (!thought.trim()) return;
+    const newMessage = {
       to: selectedProfile.name,
       text: thought,
       date: new Date().toLocaleDateString(),
     };
 
-    const updatedArchive = [newMessage, ...archive];
-    setArchive(updatedArchive);
-    localStorage.setItem(
-      "project_eternity_data",
-      JSON.stringify(updatedArchive)
-    );
-    setThought("");
+    const { error } = await supabase.from("messaggi").insert([newMessage]);
+    if (!error) {
+      setThought("");
+      fetchMessages();
+    }
   };
 
-  const deleteMessage = (id: number) => {
-    const filtered = archive.filter((m) => m.id !== id);
-    setArchive(filtered);
-    localStorage.setItem("project_eternity_data", JSON.stringify(filtered));
+  const deleteMessage = async (id: number) => {
+    await supabase.from("messaggi").delete().eq("id", id);
+    fetchMessages();
   };
 
   const theme = {
@@ -88,11 +97,23 @@ export default function App() {
         style={{
           borderBottom: `1px solid ${theme.border}`,
           marginBottom: "20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <h1 style={{ fontSize: "1.5rem", letterSpacing: "2px" }}>
-          PROJECT: ETERNITY
-        </h1>
+        <h1 style={{ fontSize: "1.2rem", margin: 0 }}>PROJECT: ETERNITY</h1>
+        <div
+          style={{
+            color: "#4ade80",
+            fontSize: "0.7rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+          }}
+        >
+          <ShieldCheck size={14} /> CLOUD ATTIVO
+        </div>
       </header>
 
       <div
@@ -161,15 +182,14 @@ export default function App() {
             }}
           >
             <p style={{ fontSize: "0.8rem", marginBottom: "10px" }}>
-              A: {selectedProfile.name.toUpperCase()}
+              DESTINATARIO: {selectedProfile.name.toUpperCase()}
             </p>
             <textarea
               value={thought}
               onChange={(e) => setThought(e.target.value)}
-              placeholder="Scrivi un pensiero eterno..."
               style={{
                 width: "100%",
-                height: "150px",
+                height: "120px",
                 background: "transparent",
                 color: "#fff",
                 border: `1px dashed ${theme.border}`,
@@ -179,7 +199,6 @@ export default function App() {
             />
             <button
               onClick={handleSave}
-              disabled={!thought}
               style={{
                 width: "100%",
                 padding: "15px",
@@ -191,58 +210,63 @@ export default function App() {
                 color: "#000",
               }}
             >
-              SALVA
+              SALVA NELL'ETERNITÀ
             </button>
           </div>
+
           <div style={{ marginTop: "20px" }}>
-            <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
-              <History size={14} /> ARCHIVIO LOCALE:
+            <p style={{ fontSize: "0.8rem", opacity: 0.7 }}>
+              <History size={14} /> ARCHIVIO MESSAGGI:
             </p>
-            {archive.map((m) => (
-              <div
-                key={m.id}
-                style={{
-                  border: `1px solid ${theme.border}`,
-                  padding: "12px",
-                  marginTop: "10px",
-                  position: "relative",
-                  borderRadius: "10px",
-                }}
-              >
-                <span
+            {loading ? (
+              <p>Caricamento dalla cassaforte...</p>
+            ) : (
+              archive.map((m) => (
+                <div
+                  key={m.id}
                   style={{
-                    fontSize: "0.6rem",
-                    color:
-                      m.to === nomiFamiglia.moglie ? theme.rose : theme.neon,
+                    border: `1px solid ${theme.border}`,
+                    padding: "12px",
+                    marginTop: "10px",
+                    borderRadius: "10px",
+                    position: "relative",
                   }}
                 >
-                  {m.to} - {m.date}
-                </span>
-                <p
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "#fff",
-                    marginTop: "5px",
-                  }}
-                >
-                  {m.text}
-                </p>
-                <button
-                  onClick={() => deleteMessage(m.id)}
-                  style={{
-                    position: "absolute",
-                    right: "10px",
-                    top: "10px",
-                    color: "#ef4444",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+                  <span
+                    style={{
+                      fontSize: "0.6rem",
+                      color:
+                        m.to === nomiFamiglia.moglie ? theme.rose : theme.neon,
+                    }}
+                  >
+                    {m.to} - {m.date}
+                  </span>
+                  <p
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "#fff",
+                      margin: "5px 0",
+                    }}
+                  >
+                    {m.text}
+                  </p>
+                  <button
+                    onClick={() => m.id && deleteMessage(m.id)}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "10px",
+                      color: "#ef4444",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </main>
       </div>
