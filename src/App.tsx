@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
-import {
-  Heart,
-  Star,
-  Send,
-  MessageSquareQuote,
-  Briefcase,
-  ScrollText,
-  History,
-  Hourglass,
-  Trash2,
-} from "lucide-react";
+import { Heart, Star, History, Trash2 } from "lucide-react";
+
+// Questa parte dice a Vercel esattamente cosa aspettarsi
+interface Messaggio {
+  id: number;
+  to: string;
+  text: string;
+  date: string;
+}
 
 export default function App() {
   const nomiFamiglia = {
@@ -30,27 +28,27 @@ export default function App() {
     name: nomiFamiglia.moglie,
     type: "Moglie",
   });
-  const [activePillar, setActivePillar] = useState("family");
   const [thought, setThought] = useState("");
 
-  // STATO PER LA MEMORIA PERSISTENTE
-  const [archive, setArchive] = useState([]);
+  // Specifichiamo il tipo <Messaggio[]> per evitare l'errore TS2345
+  const [archive, setArchive] = useState<Messaggio[]>([]);
 
-  // CARICA I MESSAGGI ALL'AVVIO
   useEffect(() => {
     const savedData = localStorage.getItem("project_eternity_data");
     if (savedData) {
-      setArchive(JSON.parse(savedData));
+      try {
+        setArchive(JSON.parse(savedData));
+      } catch (e) {
+        setArchive([]);
+      }
     }
   }, []);
 
-  // SALVA I MESSAGGI NELLA MEMORIA DEL BROWSER
   const handleSave = () => {
-    const newMessage = {
+    const newMessage: Messaggio = {
       id: Date.now(),
       to: selectedProfile.name,
       text: thought,
-      pillar: activePillar,
       date: new Date().toLocaleDateString(),
     };
 
@@ -60,14 +58,10 @@ export default function App() {
       "project_eternity_data",
       JSON.stringify(updatedArchive)
     );
-
     setThought("");
-    alert(
-      `Messaggio per ${selectedProfile.name} salvato nella memoria locale!`
-    );
   };
 
-  const deleteMessage = (id) => {
+  const deleteMessage = (id: number) => {
     const filtered = archive.filter((m) => m.id !== id);
     setArchive(filtered);
     localStorage.setItem("project_eternity_data", JSON.stringify(filtered));
@@ -77,9 +71,7 @@ export default function App() {
     bg: "#050508",
     neon: "#00f2ff",
     rose: "#ff0077",
-    darkCyan: "#0891b2",
     border: "rgba(0, 242, 255, 0.2)",
-    glass: "rgba(8, 145, 178, 0.1)",
   };
 
   return (
@@ -90,105 +82,70 @@ export default function App() {
         minHeight: "100vh",
         padding: "20px",
         fontFamily: "monospace",
-        backgroundImage:
-          "radial-gradient(circle at 50% 50%, #101835 0%, #050508 100%)",
       }}
     >
       <header
         style={{
           borderBottom: `1px solid ${theme.border}`,
           marginBottom: "20px",
-          display: "flex",
-          justifyContent: "space-between",
-          paddingBottom: "10px",
         }}
       >
-        <h1
-          style={{
-            fontSize: "1.5rem",
-            fontWeight: "900",
-            fontStyle: "italic",
-            margin: 0,
-          }}
-        >
+        <h1 style={{ fontSize: "1.5rem", letterSpacing: "2px" }}>
           PROJECT: ETERNITY
         </h1>
-        <div style={{ color: "#4ade80", fontSize: "0.6rem" }}>
-          ● MEMORIA LOCALE ATTIVA
-        </div>
       </header>
 
       <div
         style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}
       >
         <aside>
-          <p
-            style={{
-              fontSize: "0.7rem",
-              color: theme.rose,
-              fontWeight: "bold",
-            }}
-          >
-            MIA MOGLIE:
-          </p>
           <button
             onClick={() =>
               setSelectedProfile({ name: nomiFamiglia.moglie, type: "Moglie" })
             }
             style={{
               width: "100%",
-              padding: "12px",
+              padding: "15px",
               borderRadius: "10px",
-              marginBottom: "20px",
               border: `2px solid ${
                 selectedProfile.name === nomiFamiglia.moglie
                   ? theme.rose
                   : theme.border
               }`,
-              backgroundColor:
-                selectedProfile.name === nomiFamiglia.moglie
-                  ? "rgba(255, 0, 119, 0.2)"
-                  : "transparent",
               color: theme.rose,
               cursor: "pointer",
+              marginBottom: "20px",
               fontWeight: "bold",
+              background: "transparent",
             }}
           >
             <Star size={16} /> {nomiFamiglia.moglie.toUpperCase()}
           </button>
-
-          <p style={{ fontSize: "0.7rem", color: theme.darkCyan }}>
-            I MIEI 8 FIGLI:
-          </p>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: "8px",
-              marginBottom: "20px",
             }}
           >
-            {nomiFamiglia.figli.map((nome, i) => (
+            {nomiFamiglia.figli.map((n) => (
               <button
-                key={i}
-                onClick={() =>
-                  setSelectedProfile({ name: nome, type: "Figlio" })
-                }
+                key={n}
+                onClick={() => setSelectedProfile({ name: n, type: "Figlio" })}
                 style={{
                   padding: "10px",
                   borderRadius: "8px",
                   border: `1px solid ${
-                    selectedProfile.name === nome ? theme.neon : theme.border
+                    selectedProfile.name === n ? theme.neon : theme.border
                   }`,
                   backgroundColor:
-                    selectedProfile.name === nome ? theme.neon : "transparent",
-                  color: selectedProfile.name === nome ? "#000" : theme.neon,
+                    selectedProfile.name === n ? theme.neon : "transparent",
+                  color: selectedProfile.name === n ? "#000" : theme.neon,
                   cursor: "pointer",
                   fontSize: "0.7rem",
-                  fontWeight: "bold",
                 }}
               >
-                {nome}
+                {n}
               </button>
             ))}
           </div>
@@ -197,38 +154,27 @@ export default function App() {
         <main>
           <div
             style={{
-              border: `1px solid ${
-                selectedProfile.type === "Moglie" ? theme.rose : theme.border
-              }`,
+              border: `1px solid ${theme.border}`,
               borderRadius: "20px",
               padding: "20px",
-              backgroundColor: "rgba(0,0,0,0.5)",
+              background: "rgba(255,255,255,0.02)",
             }}
           >
-            <p
-              style={{
-                fontSize: "0.8rem",
-                fontWeight: "bold",
-                marginBottom: "10px",
-              }}
-            >
-              SCRIVI A: {selectedProfile.name.toUpperCase()}
+            <p style={{ fontSize: "0.8rem", marginBottom: "10px" }}>
+              A: {selectedProfile.name.toUpperCase()}
             </p>
             <textarea
               value={thought}
               onChange={(e) => setThought(e.target.value)}
-              placeholder="Scrivi qui il tuo messaggio..."
+              placeholder="Scrivi un pensiero eterno..."
               style={{
                 width: "100%",
                 height: "150px",
-                backgroundColor: "transparent",
-                border: `1px dashed ${theme.border}`,
-                borderRadius: "12px",
+                background: "transparent",
                 color: "#fff",
-                padding: "15px",
+                border: `1px dashed ${theme.border}`,
+                padding: "10px",
                 outline: "none",
-                resize: "none",
-                marginBottom: "15px",
               }}
             />
             <button
@@ -237,102 +183,66 @@ export default function App() {
               style={{
                 width: "100%",
                 padding: "15px",
-                backgroundColor:
-                  selectedProfile.type === "Moglie" ? theme.rose : theme.neon,
-                color: "#000",
+                marginTop: "10px",
+                background: theme.neon,
                 border: "none",
-                borderRadius: "12px",
-                fontWeight: "900",
+                fontWeight: "bold",
                 cursor: "pointer",
+                color: "#000",
               }}
             >
-              SALVA NELLA MEMORIA
+              SALVA
             </button>
           </div>
-
-          {/* ARCHIVIO STORICO REAL-TIME */}
-          <div style={{ marginTop: "30px" }}>
-            <p
-              style={{
-                fontSize: "0.8rem",
-                color: theme.darkCyan,
-                marginBottom: "10px",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-              }}
-            >
-              <History size={16} /> ARCHIVIO MESSAGGI SALVATI:
+          <div style={{ marginTop: "20px" }}>
+            <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
+              <History size={14} /> ARCHIVIO LOCALE:
             </p>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-                maxHeight: "300px",
-                overflowY: "auto",
-                paddingRight: "10px",
-              }}
-            >
-              {archive.length === 0 && (
-                <p style={{ fontSize: "0.7rem", color: "#64748b" }}>
-                  Nessun messaggio salvato ancora.
-                </p>
-              )}
-              {archive.map((m) => (
-                <div
-                  key={m.id}
+            {archive.map((m) => (
+              <div
+                key={m.id}
+                style={{
+                  border: `1px solid ${theme.border}`,
+                  padding: "12px",
+                  marginTop: "10px",
+                  position: "relative",
+                  borderRadius: "10px",
+                }}
+              >
+                <span
                   style={{
-                    padding: "12px",
-                    borderRadius: "10px",
-                    border: `1px solid ${theme.border}`,
-                    backgroundColor: "rgba(255,255,255,0.02)",
-                    position: "relative",
+                    fontSize: "0.6rem",
+                    color:
+                      m.to === nomiFamiglia.moglie ? theme.rose : theme.neon,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: "5px",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "0.6rem",
-                        color:
-                          m.to === nomiFamiglia.moglie
-                            ? theme.rose
-                            : theme.neon,
-                        fontWeight: "bold",
-                      }}
-                    >
-                      PER: {m.to.toUpperCase()}
-                    </span>
-                    <span style={{ fontSize: "0.5rem", color: "#64748b" }}>
-                      {m.date}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: "0.8rem", color: "#fff", margin: 0 }}>
-                    {m.text}
-                  </p>
-                  <button
-                    onClick={() => deleteMessage(m.id)}
-                    style={{
-                      position: "absolute",
-                      right: "5px",
-                      bottom: "5px",
-                      background: "none",
-                      border: "none",
-                      color: "#ef4444",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
+                  {m.to} - {m.date}
+                </span>
+                <p
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#fff",
+                    marginTop: "5px",
+                  }}
+                >
+                  {m.text}
+                </p>
+                <button
+                  onClick={() => deleteMessage(m.id)}
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "10px",
+                    color: "#ef4444",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
           </div>
         </main>
       </div>
